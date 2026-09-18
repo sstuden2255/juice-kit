@@ -1,0 +1,39 @@
+{
+  "name": "@juicekit/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "node .next/standalone/apps/web/server.js",
+    "typecheck": "next typegen && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mts",
+    "db:push": "drizzle-kit push",
+    "db:check": "drizzle-kit check",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@juicekit/registry": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "ioredis": "6.0.0",
+    "motion": "catalog:",
+    "next": "16.3.5",
+    "postgres": "3.4.9",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "24.13.5",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "drizzle-kit": "0.31.10",
+    "jsdom": "29.1.1",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  }
+}

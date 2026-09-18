@@ -1,0 +1,23 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Versions that must be identical in every workspace package. Reference with "catalog:".
+catalog:
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  motion: 13.4.0
+  react: 19.3.0
+  react-dom: 19.3.0
+  tailwindcss: 4.3.3
+  typescript: 6.0.3
+
+# pnpm 11+ refuses to run dependency install scripts until each one is decided here
+# (strictDepBuilds). esbuild (via drizzle-kit) and unrs-resolver (via eslint-config-next)
+# ship prebuilt platform binaries as optionalDependencies, so their scripts stay off.
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false
+
+minimumReleaseAgeExclude:
+  - prettier@3.9.8
