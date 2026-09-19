@@ -8,10 +8,16 @@
     "**/*.tsx",
     "**/*.mts"
   ],
+  // Vitest's default include covers .test.* and .spec.*, anywhere in the tree. Keep this in
+  // sync: a test file that reaches `next build` is compiled without the jest-dom matcher
+  // types and fails the build. TypeScript globs have no {a,b} braces, so list them out.
   "exclude": [
     "node_modules",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/__tests__/**",
     "vitest.config.mts",
     "vitest.setup.ts"
   ]

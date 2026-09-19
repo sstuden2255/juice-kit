@@ -54,7 +54,9 @@ export default defineConfig([
   // Root-level config files and scripts.
   {
     name: "juicekit/root",
-    files: ["*.{mjs,mts}", "scripts/**/*.mjs"],
+    // ESLint's default extensions do not include .mts, so per-package Vitest configs have to
+    // be listed explicitly or `eslint .` silently skips them.
+    files: ["*.{mjs,mts}", "scripts/**/*.mjs", "packages/*/vitest.config.mts"],
     extends: [tseslint.configs.recommended],
   },
 
