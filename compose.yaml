@@ -6,13 +6,17 @@ services:
     # 1) install Linux dependencies into the masked node_modules volumes (a few seconds once
     #    the lockfile is unchanged; minutes on the very first run)
     # 2) apply Drizzle migrations (exits 1 with the real error if Postgres is unreachable)
-    # 3) start the Turbopack dev server (binds 0.0.0.0 by default)
+    # 3) exec the Turbopack dev server (binds 0.0.0.0 by default) so Node replaces the shell
+    #    as the process that receives SIGTERM; without the exec, `sh` ignores it and every
+    #    Ctrl-C / `docker compose down` waits out the 10s grace period before SIGKILL.
     # HMR fallback if edits are not picked up through the bind mount:
     #   NEXT_DEV_ARGS=--webpack WATCHPACK_POLLING=true docker compose up
     command: >
       sh -c "pnpm install --frozen-lockfile
       && pnpm --filter @juicekit/web db:migrate
-      && pnpm --filter @juicekit/web exec next dev ${NEXT_DEV_ARGS:-}"
+      && cd apps/web && exec node_modules/.bin/next dev ${NEXT_DEV_ARGS:-}"
+    # tini as PID 1: forwards signals to the shell and reaps orphaned children.
+    init: true
     ports:
       - "3000:3000"
     environment:
@@ -43,22 +47,32 @@ services:
       POSTGRES_PASSWORD: juicekit
       POSTGRES_DB: juicekit
     ports:
-      - "5432:5432"
+      # Loopback only: these are unauthenticated-by-default dev services with tracked
+      # credentials, and Docker's iptables rules bypass host firewalls such as ufw. The `web`
+      # service reaches Postgres over the Compose network by service name, unaffected.
+      - "127.0.0.1:5432:5432"
     volumes:
       # Postgres 18+ images declare VOLUME /var/lib/postgresql (PGDATA=/var/lib/postgresql/18/docker).
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U juicekit -d juicekit"]
+      # -h forces a TCP probe. Without it pg_isready uses the unix socket, which the
+      # entrypoint's init-time temp server (started with listen_addresses='') already answers,
+      # so the container could be marked healthy seconds before port 5432 accepts anything.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U juicekit -d juicekit"]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 10s
 
   redis:
+    # Redis 8 is RSALv2 / SSPLv1 / AGPLv3; running the unmodified server imposes nothing on
+    # this MIT code. Swap to redis:7.2-alpine (BSD) or valkey if your deployment policy
+    # requires it.
     image: redis:8-alpine
     command: ["redis-server", "--save", "60", "1"]
     ports:
-      - "6379:6379"
+      # Loopback only: the official image ships with protected-mode off and no requirepass.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

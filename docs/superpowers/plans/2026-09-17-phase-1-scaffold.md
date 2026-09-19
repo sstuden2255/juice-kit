@@ -1,5 +1,8 @@
 # Phase 1 Scaffold Implementation Plan
 
+> Historical agent working document for Phase 1; paths and corepack notes are specific to the
+> machine it was written on. The repository is the source of truth where the two disagree.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up the JuiceKit monorepo so that lint, typecheck, test, build, and registry validation all pass on a hello-world Next.js page, with Drizzle migrations, a Redis client, a Docker Compose dev environment, and a GitHub Actions workflow in place.
@@ -1402,7 +1405,7 @@ Claude-Session: https://claude.ai/code/session_01Nwqd3wF2bMWH6GWup8ShSL"
 **Interfaces:**
 
 - Consumes: `@juicekit/web` scripts `db:migrate`, `build`; standalone layout `.next/standalone/apps/web/server.js`; `apps/web/public/.gitkeep`.
-- Produces: `docker compose up` → http://localhost:3000 with Postgres on 5432 and Redis on 6379; `docker build -t juicekit-web .` → production image listening on 3000.
+- Produces: `docker compose up` → http://localhost:3000 with Postgres on 127.0.0.1:5432 and Redis on 127.0.0.1:6379 (loopback only); `docker build -t juicekit-web .` → production image listening on 3000.
 
 - [ ] **Step 1: Write `compose.yaml`**
 
@@ -1452,12 +1455,16 @@ services:
       POSTGRES_PASSWORD: juicekit
       POSTGRES_DB: juicekit
     ports:
-      - "5432:5432"
+      # Loopback only: unauthenticated dev services with tracked credentials, and Docker's
+      # iptables rules bypass host firewalls such as ufw.
+      - "127.0.0.1:5432:5432"
     volumes:
       # Postgres 18+ images declare VOLUME /var/lib/postgresql (PGDATA=/var/lib/postgresql/18/docker).
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U juicekit -d juicekit"]
+      # -h forces a TCP probe; over the unix socket the entrypoint's init-time temp server
+      # (listen_addresses='') would answer before port 5432 is open.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U juicekit -d juicekit"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -1467,7 +1474,7 @@ services:
     image: redis:8-alpine
     command: ["redis-server", "--save", "60", "1"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -1565,7 +1572,7 @@ CMD ["node", "apps/web/server.js"]
 
 - [ ] **Step 5: Validate syntax without Docker**
 
-Run: `node -e "const fs=require('fs');const y=fs.readFileSync('compose.yaml','utf8');if(!/^services:/m.test(y)||/^version:/m.test(y))process.exit(1);for(const f of ['Dockerfile','docker/web.dev.Dockerfile']){const d=fs.readFileSync(f,'utf8');if(!/^FROM /m.test(d))process.exit(1)}console.log('docker-files-ok')"` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm exec prettier --check compose.yaml .dockerignore`
+Run: `node -e "const fs=require('fs');const y=fs.readFileSync('compose.yaml','utf8');if(!/^services:/m.test(y)||/^version:/m.test(y))process.exit(1);for(const f of ['Dockerfile','docker/web.dev.Dockerfile']){const d=fs.readFileSync(f,'utf8');if(!/^FROM /m.test(d))process.exit(1)}console.log('docker-files-ok')"` and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm exec prettier --check compose.yaml` (Prettier has no parser for `.dockerignore`)
 
 Expected: `docker-files-ok` and Prettier exit 0. If `docker` is available on the machine running this task, also run `docker compose config --quiet` (expected: exit 0) and `docker build -t juicekit-web .` followed by `docker run --rm -p 3000:3000 juicekit-web` + `curl -si localhost:3000/api/health` (expected: HTTP 503 JSON because no DB is configured, proving the server boots).
 

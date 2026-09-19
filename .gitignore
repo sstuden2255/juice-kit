@@ -30,3 +30,7 @@ yarn-error.log*
 *.pem
 .vercel
 .turbo
+
+# local Compose overrides (e.g. republishing the db ports on a wider interface)
+compose.override.yaml
+compose.override.yml

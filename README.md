@@ -27,8 +27,9 @@ docker compose up
 
 First run builds the dev image and installs Linux dependencies into named volumes (a few
 minutes); later runs take seconds. The `web` service installs dependencies, applies Drizzle
-migrations, then starts `next dev` on http://localhost:3000. Postgres is published on 5432 and
-Redis on 6379.
+migrations, then starts `next dev` on http://localhost:3000. Postgres is published on
+127.0.0.1:5432 and Redis on 127.0.0.1:6379 (loopback only — they carry tracked credentials and
+no Redis password; the `web` container reaches them by service name over the Compose network).
 
 Verify:
 
@@ -44,14 +45,46 @@ with polling:
 NEXT_DEV_ARGS=--webpack WATCHPACK_POLLING=true docker compose up
 ```
 
+On Linux hosts the dev container runs as root, so files it writes into the checkout
+(`apps/web/next-env.d.ts`, `apps/web/tsconfig.tsbuildinfo`, the named-volume mount points) end
+up root-owned. Before switching to the host workflow below, run:
+
+```bash
+sudo chown -R "$USER" apps/web/next-env.d.ts apps/web/tsconfig.tsbuildinfo \
+  node_modules apps/web/node_modules packages/registry/node_modules apps/web/.next
+```
+
+macOS Docker Desktop remaps ownership and is unaffected.
+
+`.env not found. Continuing without it.` on stderr is Node's `--env-file-if-exists` notice from
+`pnpm db:migrate`. It is expected inside Compose and in CI, where the environment comes from
+elsewhere.
+
 ## Host workflow (Node on your machine, databases in Docker)
 
 ```bash
 pnpm install
 cp apps/web/.env.example apps/web/.env
-docker compose up -d postgres redis
+docker compose up -d --wait postgres redis   # --wait blocks until both healthchecks pass
 pnpm db:migrate
 pnpm dev
+```
+
+Without `--wait`, `up -d` returns as soon as the containers start; on a fresh volume Postgres
+is still running `initdb`, and `pnpm db:migrate` makes a single attempt and fails with
+`ECONNREFUSED`.
+
+Need the databases reachable from another machine or a VM? Add an untracked
+`compose.override.yaml` with the wider port mapping rather than editing `compose.yaml`:
+
+```yaml
+# compose.override.yaml — git-ignored. `!override` replaces the mapping instead of appending
+# to it (Compose v2.24+); a plain list would concatenate and fail to bind the second time.
+services:
+  postgres:
+    ports: !override ["5432:5432"]
+  redis:
+    ports: !override ["6379:6379"]
 ```
 
 ## Scripts (run from the repo root)
@@ -65,7 +98,9 @@ pnpm dev
 | `pnpm lint:fix`          | ESLint `--fix` and Prettier write                                        |
 | `pnpm typecheck`         | `tsc --noEmit` for root scripts, `packages/registry`, and `apps/web`     |
 | `pnpm test`              | Vitest across all workspace projects (`pnpm test --project web` for one) |
+| `pnpm test:watch`        | Vitest in watch mode                                                     |
 | `pnpm format`            | Prettier write                                                           |
+| `pnpm format:check`      | Prettier check only (the second half of `pnpm lint`)                     |
 | `pnpm validate:registry` | Validates registry JSON under `apps/web/public/r` (Phase 3)              |
 | `pnpm db:generate`       | Generate a migration from `apps/web/src/db/schema.ts` (offline)          |
 | `pnpm db:migrate`        | Apply migrations (`apps/web/scripts/migrate.mts`, prints real errors)    |
@@ -73,8 +108,8 @@ pnpm dev
 | `pnpm db:check`          | Validate the migrations folder (offline)                                 |
 | `pnpm db:studio`         | Drizzle Studio                                                           |
 
-CI (`.github/workflows/ci.yml`) runs install, lint, typecheck, test, build, and validate
-registry JSON on every push to `main` and every pull request.
+CI (`.github/workflows/ci.yml`) runs install, `docker compose config`, lint, typecheck, test,
+build, and validate registry JSON on every push to `main` and every pull request.
 
 ## Production image
 
@@ -95,8 +130,11 @@ deploy step.
   palette) exposed through `@theme inline`, so components are light/dark aware without
   `dark:` utilities. Classes used in `packages/registry/src` are picked up through `@source`.
 - `apps/web/drizzle/` holds generated SQL migrations and snapshots; commit them.
-- `apps/web/.env` is read by drizzle-kit and `pnpm db:migrate` on the host. Compose injects its
-  own `DATABASE_URL` / `REDIS_URL`, which take precedence over the file.
+- Registry source and tests live under `packages/registry/src`; package-root `*.ts` files
+  (a future `vitest.setup.ts`, for instance) are type-checked and linted too.
+- `apps/web/.env` is read on the host by `next dev` / `next start`, by drizzle-kit, and by
+  `pnpm db:migrate`. Compose injects its own `DATABASE_URL` / `REDIS_URL`, which take
+  precedence over the file.
 
 ## Dependency notes
 
@@ -112,5 +150,9 @@ Pinned exactly; bump deliberately.
   Next), `vite` (required peer of Vitest 5), `jsdom` and `@testing-library/dom` /
   `@testing-library/jest-dom` (Testing Library runtime and matchers), `eslint-config-next`,
   `typescript-eslint`, `eslint-config-prettier`, and the `@types/*` packages.
+  These were added without prior sign-off because the spec's tools cannot run without them;
+  remove any you object to.
 - Not added (would need sign-off): `@eslint/js`, `@vitejs/plugin-react`, `vite-tsconfig-paths`,
   git hooks, JSON-schema validators, `prettier-plugin-tailwindcss`.
+- `redis:8-alpine` is RSALv2 / SSPLv1 / AGPLv3. Running the unmodified server imposes nothing
+  on this MIT code; swap to `redis:7.2-alpine` (BSD) or Valkey if your policy requires it.
