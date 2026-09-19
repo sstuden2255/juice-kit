@@ -7,7 +7,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Supersede outdated PR runs, but let every commit on main keep its own verdict:
+  # "CI green on main" is the Phase 1 acceptance signal.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -21,9 +23,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false # no later step pushes
 
-      # Reads "packageManager": "pnpm@12.4.2" from package.json. Do not also pass `version`.
-      - uses: pnpm/action-setup@v6
+      # pnpm/setup reads "packageManager": "pnpm@12.4.2" from package.json and downloads the
+      # native binary. Do not also pass `version`. (pnpm/action-setup is for pnpm 10 and older.)
+      - uses: pnpm/setup@v2
+        with:
+          install: false
 
       - uses: actions/setup-node@v7
         with:
@@ -32,6 +39,11 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      # Parses compose.yaml, its interpolation and its schema without pulling images.
+      # Docker Compose v2 is preinstalled on ubuntu-latest.
+      - name: Validate compose file
+        run: docker compose config --quiet
 
       - name: Lint (eslint + prettier)
         run: pnpm lint
