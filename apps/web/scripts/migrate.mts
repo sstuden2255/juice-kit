@@ -17,8 +17,16 @@ try {
   await migrate(drizzle({ client }), { migrationsFolder: "./drizzle" });
   console.log("migrations applied");
 } catch (err) {
+  // Drizzle's message is multi-line ("Failed query: ...\nparams: ..."), so printing it whole
+  // renders the connection error as if it were a query parameter. Keep the first line only,
+  // and add the driver code: an unreachable server surfaces as an AggregateError with an
+  // empty message, which would otherwise print a bare "migration failed:".
   const cause = err instanceof Error && err.cause instanceof Error ? ` (${err.cause.message})` : "";
-  console.error("migration failed:", err instanceof Error ? err.message + cause : err);
+  const code =
+    typeof err === "object" && err !== null && "code" in err ? ` [${String(err.code)}]` : "";
+  const message =
+    err instanceof Error ? `${err.message.split("\n")[0]}${cause}${code}` : String(err);
+  console.error("migration failed:", message);
   process.exitCode = 1;
 } finally {
   await client.end({ timeout: 5 });

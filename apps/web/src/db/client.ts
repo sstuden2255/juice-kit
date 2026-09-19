@@ -14,9 +14,17 @@ export function getDb(): Db {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
 
+  // postgres.js allocates an array of `max` connections: a non-numeric value throws
+  // "RangeError: Invalid array length" from deep inside the driver, and 0 makes every query
+  // wait forever. Fail loudly at the env var instead.
+  const max = Number.parseInt(process.env.DATABASE_POOL_MAX ?? "10", 10);
+  if (!Number.isInteger(max) || max < 1) {
+    throw new Error("DATABASE_POOL_MAX must be a positive integer");
+  }
+
   // postgres() opens no socket until the first query.
   const client = postgres(url, {
-    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+    max,
     idle_timeout: 20,
     connect_timeout: 10,
     // Prepared statements stay on for a direct connection. Set DATABASE_PREPARE=false only

@@ -16,6 +16,8 @@
  * registry components render correctly in shadcn-based consumer apps.
  */
 :root {
+  /* Tell the UA to render form controls, scrollbars and the canvas in this scheme. */
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -30,6 +32,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
@@ -45,6 +48,7 @@
 /* Follow the OS preference until a theme toggle (Phase 3) sets an explicit .light/.dark class. */
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
+    color-scheme: dark;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --primary: oklch(0.922 0 0);

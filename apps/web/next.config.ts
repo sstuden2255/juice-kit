@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   typescript: { tsconfigPath: "tsconfig.build.json" },
   // Keep `next dev` from writing AGENTS.md / CLAUDE.md into apps/web on every start.
   agentRules: false,
+  // Drop the X-Powered-By: Next.js response header.
+  poweredByHeader: false,
 };
 
 export default nextConfig;
