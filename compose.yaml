@@ -1,0 +1,77 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.dev.Dockerfile
+    # 1) install Linux dependencies into the masked node_modules volumes (a few seconds once
+    #    the lockfile is unchanged; minutes on the very first run)
+    # 2) apply Drizzle migrations (exits 1 with the real error if Postgres is unreachable)
+    # 3) start the Turbopack dev server (binds 0.0.0.0 by default)
+    # HMR fallback if edits are not picked up through the bind mount:
+    #   NEXT_DEV_ARGS=--webpack WATCHPACK_POLLING=true docker compose up
+    command: >
+      sh -c "pnpm install --frozen-lockfile
+      && pnpm --filter @juicekit/web db:migrate
+      && pnpm --filter @juicekit/web exec next dev ${NEXT_DEV_ARGS:-}"
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://juicekit:juicekit@postgres:5432/juicekit
+      REDIS_URL: redis://redis:6379
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: ${WATCHPACK_POLLING:-false}
+    volumes:
+      - .:/app
+      # Mask every host node_modules (macOS binaries) and Next's build output with named volumes.
+      - root_node_modules:/app/node_modules
+      - web_node_modules:/app/apps/web/node_modules
+      - registry_node_modules:/app/packages/registry/node_modules
+      - web_next:/app/apps/web/.next
+      # pnpm content-addressable store; survives recreating the containers.
+      - pnpm_store:/pnpm/store
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: juicekit
+      POSTGRES_PASSWORD: juicekit
+      POSTGRES_DB: juicekit
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ images declare VOLUME /var/lib/postgresql (PGDATA=/var/lib/postgresql/18/docker).
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U juicekit -d juicekit"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--save", "60", "1"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  root_node_modules:
+  web_node_modules:
+  registry_node_modules:
+  web_next:
+  pnpm_store:
+  postgres_data:
+  redis_data:

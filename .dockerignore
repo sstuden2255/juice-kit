@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/out
+**/coverage
+**/.vitest
+**/*.tsbuildinfo
+**/next-env.d.ts
+.git
+.github
+**/.env*
+!**/.env.example
+**/.DS_Store
