@@ -8,22 +8,22 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "pnpm --filter @juicekit/web dev",
-    "build": "pnpm --filter @juicekit/web build",
-    "start": "pnpm --filter @juicekit/web start",
+    "dev": "\"$npm_execpath\" --filter @juicekit/web dev",
+    "build": "\"$npm_execpath\" --filter @juicekit/web build",
+    "start": "\"$npm_execpath\" --filter @juicekit/web start",
     "lint": "eslint . --max-warnings 0 && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
-    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r run typecheck",
+    "typecheck": "tsc --noEmit -p tsconfig.json && \"$npm_execpath\" -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate:registry": "node scripts/validate-registry.mjs",
-    "db:generate": "pnpm --filter @juicekit/web db:generate",
-    "db:migrate": "pnpm --filter @juicekit/web db:migrate",
-    "db:push": "pnpm --filter @juicekit/web db:push",
-    "db:check": "pnpm --filter @juicekit/web db:check",
-    "db:studio": "pnpm --filter @juicekit/web db:studio"
+    "db:generate": "\"$npm_execpath\" --filter @juicekit/web db:generate",
+    "db:migrate": "\"$npm_execpath\" --filter @juicekit/web db:migrate",
+    "db:push": "\"$npm_execpath\" --filter @juicekit/web db:push",
+    "db:check": "\"$npm_execpath\" --filter @juicekit/web db:check",
+    "db:studio": "\"$npm_execpath\" --filter @juicekit/web db:studio"
   },
   "devDependencies": {
     "@types/node": "24.13.5",
