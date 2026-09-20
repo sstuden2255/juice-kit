@@ -100,7 +100,9 @@ function buildLayout(
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0] as const;
 
 function DigitColumn({ scaled, position }: { scaled: MotionValue<number>; position: number }) {
-  const y = useTransform(scaled, (v) => `${-odometerPosition(v, position) * 100}%`);
+  // Each digit row is 1em tall, so the offset is expressed in em. (Percentages would be
+  // relative to the whole 11-row stack, not one digit.)
+  const y = useTransform(scaled, (v) => `${-odometerPosition(v, position)}em`);
   return (
     <span
       data-digit=""

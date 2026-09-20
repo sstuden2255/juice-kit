@@ -11,7 +11,36 @@ This repository is a pnpm workspace:
 | `apps/web`          | `@juicekit/web`      | Next.js 16 site: docs, playground, registry, route handlers |
 | `packages/registry` | `@juicekit/registry` | Component source published as registry items (Phase 2+)     |
 
-Current status: **Phase 1 (scaffold and infrastructure)**. See `SPEC.md` for the roadmap.
+Current status: **Phase 2 (animation primitives and the first three components)**. See
+`SPEC.md` for the roadmap.
+
+## Components
+
+Everything lives in `packages/registry/src` and is exported from `@juicekit/registry` (barrel)
+and as subpaths such as `@juicekit/registry/ui/xp-bar`. Every item animates `transform` and
+`opacity` only, draws particles on a `<canvas>`, depends on nothing but Motion, and honours
+`prefers-reduced-motion` (or a `reducedMotion` prop) with an instant state change plus a
+subtle fade.
+
+| Item                | Kind      | What it does                                                                                  |
+| ------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `ParticleEngine`    | lib       | Canvas particle system: `burst`, `fountain`, directional `emit`; pooled, DPR aware            |
+| `ParticleCanvas`    | primitive | Pointer-transparent canvas filling its parent, imperative handle, no-op under reduced motion  |
+| `AnimatedNumber`    | primitive | Odometer digits on a spring, Intl formatting, formatted value exposed to assistive tech       |
+| `ShineSweep`        | primitive | Masked highlight sweep over children; `active` prop or `play()` handle                        |
+| `XPBar`             | component | Spring fill, gain flash, animated label, level rollover with `onLevelUp({ level, overflow })` |
+| `AchievementUnlock` | component | Badge drop, shine, rarity particles, staggered reveal; `play()` resolves on completion        |
+| `LevelUp`           | component | Radial glow, number flip, particle fountain, optional screen flash                            |
+
+Each component supports controlled and uncontrolled use (`value`/`defaultValue`,
+`open`/`defaultOpen`) and an imperative handle (`gain()`, `play()`, `reset()`). Live demos with a
+reduced-motion toggle are at `/demo` in the web app.
+
+Registry source conventions: `ui/` for components, `lib/` for framework-agnostic code, `hooks/`
+for hooks; files import each other relatively (the Phase 3 registry build rewrites those to
+shadcn's `@/` aliases); tests sit next to the code and run in jsdom with Testing Library,
+using `test/reduced-motion.ts` to flip the media query and `test/canvas-mock.ts` for the 2D
+context.
 
 ## Prerequisites
 

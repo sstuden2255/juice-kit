@@ -22,7 +22,18 @@ describe("AnimatedNumber", () => {
     render(<AnimatedNumber value={1234} />);
     expect(screen.getByText("1,234")).toHaveClass("sr-only");
     const container = screen.getByText("1,234").parentElement!;
-    expect(container.querySelectorAll("[data-digit]")).toHaveLength(4);
+    const columns = container.querySelectorAll<HTMLElement>("[data-digit]");
+    expect(columns).toHaveLength(4);
+    // Each column's stack is offset by whole digit rows (1em each), most significant first.
+    const offsets = Array.from(columns).map(
+      (column) => column.querySelector<HTMLElement>("[aria-hidden='true']")!.style.transform,
+    );
+    expect(offsets).toEqual([
+      "translateY(-1em)",
+      "translateY(-2em)",
+      "translateY(-3em)",
+      "translateY(-4em)",
+    ]);
   });
 
   test("formats with Intl options and locale", () => {
