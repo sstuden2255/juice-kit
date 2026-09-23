@@ -34,7 +34,6 @@ export function HeroShowcase() {
   const achievement = useRef<AchievementUnlockHandle>(null);
   const stage = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
-  const [playing, setPlaying] = useState(false);
   const [epoch, setEpoch] = useState(0);
 
   const play = useCallback(async () => {
@@ -43,7 +42,6 @@ export function HeroShowcase() {
     abort.current = controller;
     const { signal } = controller;
 
-    setPlaying(true);
     levelUp.current?.reset();
     achievement.current?.reset();
     setEpoch((value) => value + 1);
@@ -55,7 +53,6 @@ export function HeroShowcase() {
     if (!signal.aborted) await levelUp.current?.play();
     await sleep(200, signal);
     if (!signal.aborted) await achievement.current?.play();
-    if (!signal.aborted) setPlaying(false);
   }, []);
 
   useEffect(() => {
@@ -100,9 +97,11 @@ export function HeroShowcase() {
         <XPBar key={epoch} ref={bar} defaultValue={70} max={100} defaultLevel={12} />
       </div>
       <div className="flex justify-center">
-        <ActionButton onClick={() => void play()} disabled={playing}>
-          {playing ? "Playing…" : "Replay the moment"}
-        </ActionButton>
+        {/*
+          Deliberately never disabled: play() aborts any run in flight and starts over, so a
+          sequence interrupted by a backgrounded tab or a navigation cannot latch the button off.
+        */}
+        <ActionButton onClick={() => void play()}>Replay the moment</ActionButton>
       </div>
     </div>
   );

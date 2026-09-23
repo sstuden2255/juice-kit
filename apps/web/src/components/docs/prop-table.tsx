@@ -1,4 +1,21 @@
+import type { ReactNode } from "react";
 import type { RegistryInterface } from "@/lib/registry";
+
+/**
+ * JSDoc marks inline code with backticks, so a description reaches us as
+ * "receives the new XP after `gain()`". Render those spans as code instead of literal ticks.
+ */
+function withInlineCode(text: string): ReactNode[] {
+  return text.split(/`([^`]+)`/g).map((part, index) =>
+    index % 2 === 1 ? (
+      <code key={index} className="font-mono text-[13px]">
+        {part}
+      </code>
+    ) : (
+      part
+    ),
+  );
+}
 
 export interface PropTableProps {
   api: RegistryInterface;
@@ -62,7 +79,9 @@ export function PropTable({ api, title, description }: PropTableProps) {
                   <td className="px-3 py-2 font-mono text-[13px] text-muted-foreground">
                     {member.defaultValue ?? "—"}
                   </td>
-                  <td className="px-3 py-2">{member.description || "—"}</td>
+                  <td className="px-3 py-2">
+                    {member.description ? withInlineCode(member.description) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

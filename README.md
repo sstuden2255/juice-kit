@@ -6,13 +6,14 @@ install as source through a shadcn-compatible registry. MIT licensed.
 
 This repository is a pnpm workspace:
 
-| Path                | Package              | What it is                                                  |
-| ------------------- | -------------------- | ----------------------------------------------------------- |
-| `apps/web`          | `@juicekit/web`      | Next.js 16 site: docs, playground, registry, route handlers |
-| `packages/registry` | `@juicekit/registry` | Component source published as registry items (Phase 2+)     |
+| Path                | Package              | What it is                                                    |
+| ------------------- | -------------------- | ------------------------------------------------------------- |
+| `apps/web`          | `@juicekit/web`      | Next.js 16 site: landing page, docs, registry, route handlers |
+| `packages/registry` | `@juicekit/registry` | Component source published as registry items                  |
+| `scripts/registry`  | —                    | Build that turns that source into shadcn registry JSON        |
 
-Current status: **Phase 2 (animation primitives and the first three components)**. See
-`SPEC.md` for the roadmap.
+Current status: **Phase 3 (registry build, docs site, landing page)**. See `SPEC.md` for the
+roadmap.
 
 ## Components
 
@@ -33,14 +34,46 @@ subtle fade.
 | `LevelUp`           | component | Radial glow, number flip, particle fountain, optional screen flash                            |
 
 Each component supports controlled and uncontrolled use (`value`/`defaultValue`,
-`open`/`defaultOpen`) and an imperative handle (`gain()`, `play()`, `reset()`). Live demos with a
-reduced-motion toggle are at `/demo` in the web app.
+`open`/`defaultOpen`) and an imperative handle (`gain()`, `play()`, `reset()`). Every item has a
+docs page at `/docs/<name>` with a live preview, a reduced-motion switch, generated prop
+tables, its CSS variables, and the exact source the CLI installs.
 
 Registry source conventions: `ui/` for components, `lib/` for framework-agnostic code, `hooks/`
-for hooks; files import each other relatively (the Phase 3 registry build rewrites those to
-shadcn's `@/` aliases); tests sit next to the code and run in jsdom with Testing Library,
-using `test/reduced-motion.ts` to flip the media query and `test/canvas-mock.ts` for the 2D
-context.
+for hooks; files import each other relatively and the registry build rewrites those to shadcn's
+`@/` aliases; tests sit next to the code and run in jsdom with Testing Library, using
+`test/reduced-motion.ts` to flip the media query and `test/canvas-mock.ts` for the 2D context.
+
+## Registry
+
+`pnpm build:registry` reads the manifest in `scripts/registry/items.mjs` and writes
+`apps/web/public/r/registry.json` plus one JSON per item, which Next serves directly:
+
+```bash
+npx shadcn@latest add http://localhost:3000/r/level-up.json
+```
+
+The CLI follows `registryDependencies`, so that one command also installs the particle canvas,
+engine, spring presets, reduced-motion hook and class-name helper, and adds Motion to
+`package.json`.
+
+Two things the build does that are worth knowing:
+
+- **Imports are rewritten.** `../lib/springs` inside the workspace becomes `@/lib/juice-springs`
+  in the emitted file. A relative import that does not resolve to a manifest entry fails the
+  build rather than shipping.
+- **Prop tables are extracted.** `scripts/registry/extract-props.mjs` parses each component with
+  the TypeScript compiler, so the tables on the docs pages come from the component's own types
+  and JSDoc. A prop documented with a capital `Default x.` gets a Default column; lowercase
+  "defaults to …" stays prose.
+
+`cn` and the spring presets install as `lib/juice-utils.ts` and `lib/juice-springs.ts` so adding
+JuiceKit can never overwrite a shadcn consumer's own `lib/utils.ts`.
+
+The output is generated, not committed: `pnpm dev`, `pnpm typecheck` and `pnpm build` all
+produce it first, and CI builds it on its own step. `pnpm validate:registry` checks the emitted
+JSON against the shadcn item and registry shapes, verifies every `registryDependencies` URL
+resolves to an emitted item, and fails on any relative import that survived the rewrite. Set
+`REGISTRY_BASE_URL` (or pass `--base-url`) to build install URLs for a real host.
 
 ## Prerequisites
 
@@ -118,27 +151,29 @@ services:
 
 ## Scripts (run from the repo root)
 
-| Script                   | What it does                                                             |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `pnpm dev`               | `next dev` for `apps/web`                                                |
-| `pnpm build`             | `next build` (standalone output, type-checks `tsconfig.build.json`)      |
-| `pnpm start`             | Runs the built standalone server                                         |
-| `pnpm lint`              | ESLint (`--max-warnings 0`) and Prettier check                           |
-| `pnpm lint:fix`          | ESLint `--fix` and Prettier write                                        |
-| `pnpm typecheck`         | `tsc --noEmit` for root scripts, `packages/registry`, and `apps/web`     |
-| `pnpm test`              | Vitest across all workspace projects (`pnpm test --project web` for one) |
-| `pnpm test:watch`        | Vitest in watch mode                                                     |
-| `pnpm format`            | Prettier write                                                           |
-| `pnpm format:check`      | Prettier check only (the second half of `pnpm lint`)                     |
-| `pnpm validate:registry` | Validates registry JSON under `apps/web/public/r` (Phase 3)              |
-| `pnpm db:generate`       | Generate a migration from `apps/web/src/db/schema.ts` (offline)          |
-| `pnpm db:migrate`        | Apply migrations (`apps/web/scripts/migrate.mts`, prints real errors)    |
-| `pnpm db:push`           | Push the schema without a migration file (dev only)                      |
-| `pnpm db:check`          | Validate the migrations folder (offline)                                 |
-| `pnpm db:studio`         | Drizzle Studio                                                           |
+| Script                   | What it does                                                              |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `pnpm dev`               | Builds the registry, then `next dev` for `apps/web`                       |
+| `pnpm build`             | Builds the registry, then `next build` (standalone, type-checked)         |
+| `pnpm start`             | Runs the built standalone server                                          |
+| `pnpm lint`              | ESLint (`--max-warnings 0`) and Prettier check                            |
+| `pnpm lint:fix`          | ESLint `--fix` and Prettier write                                         |
+| `pnpm typecheck`         | Builds the registry, then `tsc --noEmit` across scripts and both packages |
+| `pnpm test`              | Vitest across all workspace projects (`pnpm test --project web` for one)  |
+| `pnpm test:watch`        | Vitest in watch mode                                                      |
+| `pnpm format`            | Prettier write                                                            |
+| `pnpm format:check`      | Prettier check only (the second half of `pnpm lint`)                      |
+| `pnpm build:registry`    | Generates `apps/web/public/r` from `packages/registry/src`                |
+| `pnpm validate:registry` | Validates the emitted registry JSON against the shadcn shapes             |
+| `pnpm db:generate`       | Generate a migration from `apps/web/src/db/schema.ts` (offline)           |
+| `pnpm db:migrate`        | Apply migrations (`apps/web/scripts/migrate.mts`, prints real errors)     |
+| `pnpm db:push`           | Push the schema without a migration file (dev only)                       |
+| `pnpm db:check`          | Validate the migrations folder (offline)                                  |
+| `pnpm db:studio`         | Drizzle Studio                                                            |
 
-CI (`.github/workflows/ci.yml`) runs install, `docker compose config`, lint, typecheck, test,
-build, and validate registry JSON on every push to `main` and every pull request.
+CI (`.github/workflows/ci.yml`) runs install, build registry, `docker compose config`, lint,
+typecheck, test, build, and validate registry JSON on every push to `main` and every pull
+request.
 
 ## Production image
 
@@ -154,7 +189,10 @@ deploy step.
 ## Layout notes
 
 - `apps/web/src/app` is the App Router tree; `src/db` holds the Drizzle schema and client;
-  `src/lib` holds shared server utilities (Redis client). `@/*` maps to `apps/web/src/*`.
+  `src/lib` holds shared utilities (Redis client, registry loader, theme). `@/*` maps to
+  `apps/web/src/*`. `src/components/previews` holds the interactive demos the docs pages embed.
+- `apps/web/public/r` is generated by `pnpm build:registry` and git-ignored. Phase 2's `/demo`
+  routes redirect to their `/docs` equivalents.
 - Theme tokens live in `apps/web/src/app/globals.css` as CSS variables (shadcn "neutral"
   palette) exposed through `@theme inline`, so components are light/dark aware without
   `dark:` utilities. Classes used in `packages/registry/src` are picked up through `@source`.
@@ -182,6 +220,7 @@ Pinned exactly; bump deliberately.
   These were added without prior sign-off because the spec's tools cannot run without them;
   remove any you object to.
 - Not added (would need sign-off): `@eslint/js`, `@vitejs/plugin-react`, `vite-tsconfig-paths`,
-  git hooks, JSON-schema validators, `prettier-plugin-tailwindcss`.
+  git hooks, JSON-schema validators (`scripts/validate-registry.mjs` checks the shadcn shapes
+  by hand instead), a syntax highlighter for the docs code blocks, `prettier-plugin-tailwindcss`.
 - `redis:8-alpine` is RSALv2 / SSPLv1 / AGPLv3. Running the unmodified server imposes nothing
   on this MIT code; swap to `redis:7.2-alpine` (BSD) or Valkey if your policy requires it.

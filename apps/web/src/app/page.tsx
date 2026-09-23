@@ -55,8 +55,12 @@ export default function HomePage() {
                 >
                   Get started
                 </Link>
-                <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
-                  <code className="font-mono text-[13px]">{install}</code>
+                {/* The command is wider than a phone viewport, so it scrolls inside its box
+                    rather than widening the page. */}
+                <div className="flex max-w-full items-center gap-2 rounded-md border border-border px-3 py-2">
+                  <code className="min-w-0 flex-1 overflow-x-auto font-mono text-[13px] whitespace-nowrap">
+                    {install}
+                  </code>
                   <CopyButton value={install} />
                 </div>
               </div>
