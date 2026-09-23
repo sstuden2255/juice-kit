@@ -71,6 +71,16 @@ async function main() {
       },
     ];
 
+    // The index is a catalogue and the per-item file is the full record, so the shared half is
+    // built once and the API is added on top of it.
+    const indexMeta = {
+      symbol: item.symbol ?? item.title,
+      alias: item.alias,
+      target: item.target,
+      source: item.source,
+      install: `npx shadcn@latest add ${baseUrl}/r/${item.name}.json`,
+    };
+
     /** @type {Record<string, unknown>} */
     const definition = {
       $schema: SCHEMA_ITEM,
@@ -84,14 +94,7 @@ async function main() {
       registryDependencies: registryDependencies.map((name) => `${baseUrl}/r/${name}.json`),
       files,
       docs: `${baseUrl}/docs/${item.name}`,
-      meta: {
-        symbol: item.symbol ?? item.title,
-        alias: item.alias,
-        target: item.target,
-        source: item.source,
-        install: `npx shadcn@latest add ${baseUrl}/r/${item.name}.json`,
-        api: extractApi(sourcePath, contents),
-      },
+      meta: { ...indexMeta, api: extractApi(sourcePath, contents) },
     };
     if (item.cssVars) definition.cssVars = item.cssVars;
 
@@ -101,10 +104,6 @@ async function main() {
       "utf8",
     );
 
-    // The index is a catalogue, so it drops the two bulky parts that belong to the per-item
-    // files: the source contents and the extracted API.
-    const indexMeta = { ...definition.meta };
-    delete indexMeta.api;
     index.push({
       ...definition,
       $schema: undefined,

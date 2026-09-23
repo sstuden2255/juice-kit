@@ -33,13 +33,22 @@ const errors = [];
 /** @param {string} file @param {string} message */
 const fail = (file, message) => errors.push(`${file}: ${message}`);
 
-/** @param {unknown} value */
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
 const isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** @param {unknown} value */
+/**
+ * @param {unknown} value
+ * @returns {value is string}
+ */
 const isNonEmptyString = (value) => typeof value === "string" && value.length > 0;
 
-/** @param {unknown} value */
+/**
+ * @param {unknown} value
+ * @returns {value is string[]}
+ */
 const isStringArray = (value) => Array.isArray(value) && value.every(isNonEmptyString);
 
 /**

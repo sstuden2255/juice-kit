@@ -90,11 +90,9 @@ export function extractApi(filePath, contents) {
   const interfaces = [];
   const types = [];
   for (const statement of sf.statements) {
-    const exported = ts
-      .getCombinedModifierFlags(/** @type {ts.Declaration} */ (statement))
-      .valueOf();
-    const isExported = (exported & ts.ModifierFlags.Export) !== 0;
-    if (!isExported) continue;
+    const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
+    const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+    if (isExported !== true) continue;
     if (ts.isInterfaceDeclaration(statement)) {
       interfaces.push(readInterface(statement, sf));
     } else if (ts.isTypeAliasDeclaration(statement)) {

@@ -33,3 +33,9 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     vi.mocked(window.matchMedia).mockImplementation(matchMediaImpl);
   });
 }
+
+// jsdom has no canvas implementation and logs "Not implemented" for every getContext() call.
+// ParticleEngine already copes with a null context; this keeps the noise out of the run.
+if (typeof HTMLCanvasElement !== "undefined") {
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => null);
+}

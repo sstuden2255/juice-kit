@@ -12,6 +12,21 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // Drop the X-Powered-By: Next.js response header.
   poweredByHeader: false,
+  // Phase 2's /demo pages were folded into the docs pages, which carry the same live previews
+  // plus props and source. Keep the old links working.
+  async redirects() {
+    return [
+      { source: "/demo", destination: "/docs", permanent: false },
+      { source: "/demo/primitives", destination: "/docs", permanent: false },
+      { source: "/demo/xp-bar", destination: "/docs/xp-bar", permanent: false },
+      {
+        source: "/demo/achievement-unlock",
+        destination: "/docs/achievement-unlock",
+        permanent: false,
+      },
+      { source: "/demo/level-up", destination: "/docs/level-up", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
