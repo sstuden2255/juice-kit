@@ -40,6 +40,12 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # Generated, not committed: the docs pages read it and `next build` serves it. Building
+      # it here (rather than only inside `pnpm build`) makes a broken alias rewrite fail on its
+      # own step instead of somewhere inside the Next.js build log.
+      - name: Build registry
+        run: pnpm build:registry
+
       # Parses compose.yaml, its interpolation and its schema without pulling images.
       # Docker Compose v2 is preinstalled on ubuntu-latest.
       - name: Validate compose file
