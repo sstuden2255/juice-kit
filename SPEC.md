@@ -57,6 +57,13 @@ Each gets a demo page and Vitest + Testing Library smoke tests (renders, respect
 - Analytics: Redis INCR on component copy/CLI-command-copy events; nightly rollup route → Postgres; tiny internal `/stats` page.
 - Waitlist email capture on landing (Postgres table, honeypot spam guard).
 
+## Phase 6 — Animation polish pass
+Deferred on purpose: components ship correct and on-spec through Phase 5, then the whole set gets its art direction in one pass rather than piecemeal.
+- Readiness gate: record an 8-second clip of every component. One that can't carry 8 seconds isn't done, however green its tests are.
+- Art direction: commit to a palette and a motion signature. Three shared spring presets used everywhere read as framework defaults, not as a style.
+- Choreography: anticipation → impact → settle, with secondary motion trailing the primary. Most sequences currently land on a single beat.
+- Verify on real hardware: animation feel and phone-width layout (~400px). A headless tab reports `document.hidden`, which freezes `requestAnimationFrame`, so neither is checkable in automation.
+
 ## Working style
 - Work phase by phase; do not start a phase until the previous one builds, tests pass, and you've committed.
 - Conventional commits, one branch per phase.
